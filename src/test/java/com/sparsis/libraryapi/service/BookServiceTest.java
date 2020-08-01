@@ -49,7 +49,7 @@ public class BookServiceTest {
     @Test
     void saveBookWithDuplicatedISBN() {
         Book book = createValidBook();
-        Mockito.when(repository.existsByISBN(book.getIsbn())).thenReturn(true);
+        Mockito.when(repository.existsByIsbn(book.getIsbn())).thenReturn(true);
         Throwable exception = Assertions.catchThrowable(() -> service.save(book));
         assertThat(exception).isInstanceOf(BusinessException.class).hasMessage("Duplicated ISBN");
         Mockito.verify(repository, Mockito.never()).save(book);

@@ -1,4 +1,4 @@
-package com.sparsis.libraryapi.controller;
+package com.sparsis.libraryapi.api.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sparsis.libraryapi.api.dto.BookDTO;
