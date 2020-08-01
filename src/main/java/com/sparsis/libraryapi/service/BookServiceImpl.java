@@ -1,5 +1,6 @@
 package com.sparsis.libraryapi.service;
 
+import com.sparsis.libraryapi.exception.BusinessException;
 import com.sparsis.libraryapi.model.entity.Book;
 import com.sparsis.libraryapi.repository.BookRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,9 @@ public class BookServiceImpl implements BookService {
 
     @Override
     public Book save(Book book) {
+        if(repository.existsByISBN(book.getIsbn())) {
+            throw new BusinessException("Duplicated ISBN");
+        }
         return repository.save(book);
     }
 }
