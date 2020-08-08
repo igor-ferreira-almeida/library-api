@@ -15,6 +15,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
@@ -23,6 +26,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
 
+import java.util.Arrays;
 import java.util.Optional;
 
 @ActiveProfiles("test")
@@ -37,7 +41,7 @@ public class BookControllerTest {
     MockMvc mvc;
 
     @MockBean
-    BookService bookService;
+    BookService service;
 
     @DisplayName("Create book with success")
     @Test
@@ -45,7 +49,7 @@ public class BookControllerTest {
         BookDTO bookDTO = createNewBookDTO();
         Book book = Book.builder().id(1L).title("title1").author("author1").isbn("001").build();
 
-        BDDMockito.given(bookService.save(Mockito.any(Book.class))).willReturn(book);
+        BDDMockito.given(service.save(Mockito.any(Book.class))).willReturn(book);
         String json = new ObjectMapper().writeValueAsString(bookDTO);
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(BOOK_API)
@@ -81,7 +85,7 @@ public class BookControllerTest {
     void createBookWithDuplicatedIsbn() throws Exception {
         BookDTO bookDTO = createNewBookDTO();
         String json = new ObjectMapper().writeValueAsString(bookDTO);
-        BDDMockito.given(bookService.save(Mockito.any(Book.class))).willThrow(new BusinessException("Duplicated ISBN"));
+        BDDMockito.given(service.save(Mockito.any(Book.class))).willThrow(new BusinessException("Duplicated ISBN"));
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.post(BOOK_API)
                 .contentType(MediaType.APPLICATION_JSON)
@@ -99,7 +103,7 @@ public class BookControllerTest {
     void getBookDetailWithExistsBook() throws Exception {
         Long id = 1L;
         Book book = Book.builder().id(id).title("title1").author("author1").isbn("001").build();
-        BDDMockito.given(bookService.findById(id)).willReturn(Optional.of(book));
+        BDDMockito.given(service.findById(id)).willReturn(Optional.of(book));
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(BOOK_API.concat("/" + id))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -118,7 +122,7 @@ public class BookControllerTest {
     @Test
     void getBookDetailNotExistsBook() throws Exception {
         Long id = 1L;
-        BDDMockito.given(bookService.findById(id)).willReturn(Optional.empty());
+        BDDMockito.given(service.findById(id)).willReturn(Optional.empty());
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(BOOK_API.concat("/" + id))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -132,7 +136,7 @@ public class BookControllerTest {
     void deleteBook() throws Exception {
         Long id = 1L;
         Book book = Book.builder().id(id).build();
-        BDDMockito.given(bookService.findById(Mockito.anyLong())).willReturn(Optional.of(book));
+        BDDMockito.given(service.findById(Mockito.anyLong())).willReturn(Optional.of(book));
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.delete(BOOK_API.concat("/" + 1L))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -147,7 +151,7 @@ public class BookControllerTest {
         Long id = 1L;
         Book book = Book.builder().id(id).build();
 
-        BDDMockito.given(bookService.findById(Mockito.anyLong())).willReturn(Optional.empty());
+        BDDMockito.given(service.findById(Mockito.anyLong())).willReturn(Optional.empty());
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.delete(BOOK_API.concat("/" + 1L))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -164,10 +168,10 @@ public class BookControllerTest {
         String json = new ObjectMapper().writeValueAsString(bookDTO);
 
         Book book = Book.builder().id(1L).title("title1").author("author1").isbn("001").build();
-        BDDMockito.given(bookService.findById(id)).willReturn(Optional.of(book));
+        BDDMockito.given(service.findById(id)).willReturn(Optional.of(book));
 
         Book updatedBook = Book.builder().id(book.getId()).title(bookDTO.getTitle()).author(bookDTO.getAuthor()).isbn(book.getIsbn()).build();
-        BDDMockito.given(bookService.update(Mockito.any(Book.class))).willReturn(updatedBook);
+        BDDMockito.given(service.update(Mockito.any(Book.class))).willReturn(updatedBook);
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.put(BOOK_API.concat("/" + id))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -188,7 +192,7 @@ public class BookControllerTest {
         BookDTO bookDTO = BookDTO.builder().title("title2").author("author2").build();
         String json = new ObjectMapper().writeValueAsString(bookDTO);
 
-        BDDMockito.given(bookService.findById(Mockito.anyLong())).willReturn(Optional.empty());
+        BDDMockito.given(service.findById(Mockito.anyLong())).willReturn(Optional.empty());
 
         MockHttpServletRequestBuilder request = MockMvcRequestBuilders.put(BOOK_API.concat("/" + 1L))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -196,6 +200,25 @@ public class BookControllerTest {
                 .content(json);
 
         mvc.perform(request).andExpect(MockMvcResultMatchers.status().isNotFound());
+    }
+
+    @DisplayName("Find By - Success")
+    @Test
+    void findByTest() throws Exception {
+        Long id = 1L;
+        Book book = Book.builder().id(id).title("title1").author("author1").isbn("001").build();
+        BDDMockito.given(service.find(Mockito.any(Book.class), Mockito.any(Pageable.class))).willReturn(new PageImpl<>(Arrays.asList(book), PageRequest.of(0, 100), 1));
+
+        String queryParam = String.format("?title=%s&author=%s&page=0&size=100", book.getTitle(), book.getAuthor());
+        MockHttpServletRequestBuilder request = MockMvcRequestBuilders.get(BOOK_API.concat(queryParam))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON);
+
+        mvc.perform(request).andExpect(MockMvcResultMatchers.status().isOk())
+                .andExpect(MockMvcResultMatchers.jsonPath("content", Matchers.hasSize(1)))
+                .andExpect(MockMvcResultMatchers.jsonPath("totalElements").value(1))
+                .andExpect(MockMvcResultMatchers.jsonPath("pageable.pageSize").value(100))
+                .andExpect(MockMvcResultMatchers.jsonPath("pageable.pageNumber").value(0));
     }
 
     private BookDTO createNewBookDTO() {

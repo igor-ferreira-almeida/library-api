@@ -7,6 +7,9 @@ import com.sparsis.libraryapi.model.entity.Book;
 import com.sparsis.libraryapi.service.BookService;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -17,7 +20,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.validation.Valid;
 import java.net.URI;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RequestMapping("/api/books")
 @RestController
@@ -49,6 +54,16 @@ public class BookController {
         } else {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         }
+    }
+
+    @GetMapping
+    public ResponseEntity<Page<BookDTO>> find(BookDTO bookDTO, Pageable pageRequest) {
+        Book book = modelMapper.map(bookDTO, Book.class);
+
+        Page<Book> result = service.find(book, pageRequest);
+        List<BookDTO> booksDTO = result.getContent().stream().map(entity -> modelMapper.map(entity, BookDTO.class)).collect(Collectors.toList());
+
+        return ResponseEntity.ok(new PageImpl<>(booksDTO, pageRequest, result.getTotalElements()));
     }
 
     @PutMapping("/{id}")
